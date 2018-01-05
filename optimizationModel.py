@@ -4,7 +4,7 @@ import pandas as pd
 import copy
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-H2M = 0.2
+H2M = 0.3
 def DayAheadModel(microgrid_data,case):
     microgrid_device = case.device
     N_T = case.NumOfTime
@@ -140,7 +140,7 @@ def DayAheadModel(microgrid_data,case):
     optimalDispatch.ACPowerBalance = Constraint(T, rule=ACPowerBalance)
     optimalDispatch.DCPowerBalance = Constraint(T, rule=DCPowerBalance)
     '''热功率平衡约束'''
-    H2M = 0.2
+    H2M = 0.3
 
     def heatPowerBalance(mdl, t):
         heat_supply = sum(mdl.bol_power[i, t] for i in N_bol) \
@@ -154,8 +154,8 @@ def DayAheadModel(microgrid_data,case):
     optimalDispatch.HPB2 = Constraint(T,rule = lambda mdl,t:mdl.medium_heat[t] >= steam_heat_load[t])
     #optimalDispatch.HPB3 = Constraint(T, rule=lambda mdl, t: mdl.medium_heat[t] == sum(mdl.gt_power[n_gt, t] * microgrid_device[n_gt].HER * microgrid_device[n_gt].low_heat_recycle for n_gt in N_gt))
     #optimalDispatch.HPB4 = Constraint(T, rule=lambda mdl, t: mdl.medium_heat[t] + mdl.medium_heat[t] >= steam_heat_load[t] )
-    optimalDispatch.HPB5 = Constraint(T, rule=lambda mdl, t: mdl.low_heat[t] == (H2M) * steam_heat_load[t])
-    optimalDispatch.HPB6 = Constraint(T, rule=lambda mdl, t: mdl.low_heat[t] + mdl.medium_heat[t] >= steam_heat_load[t] + sum(mdl.absc_heat_in[n_absc, t] for n_absc in N_absc))
+    optimalDispatch.HPB5 = Constraint(T, rule=lambda mdl, t: mdl.low_heat[t] == (H2M) * steam_heat_load[t] + sum(mdl.gt_power[n_gt, t] * microgrid_device[n_gt].HER * microgrid_device[n_gt].low_heat_recycle for n_gt in N_gt))
+    optimalDispatch.HPB6 = Constraint(T, rule=lambda mdl, t: mdl.low_heat[t] + mdl.medium_heat[t] >= steam_heat_load[t] + sum(mdl.absc_heat_in[n_absc, t] for n_absc in N_absc) + water_heat_load[t])
 
     # TODO 完善高中低品味热模型
     '''冷功率平衡约束'''
@@ -323,6 +323,7 @@ def retriveResult(microgrid_data,case,model):
     df['交流负荷'] = pd.Series([acLoad[t] for t in T],index=T)
     df['直流负荷'] = pd.Series([dcLoad[t] for t in T],index=T)
     df['冷负荷'] = microgrid_data['冷负荷'].loc[T]
+    df['热水负荷'] = microgrid_data['热水负荷'].loc[T]
     df['蒸汽负荷'] =  microgrid_data['蒸汽负荷'].loc[T]
     df['电价'] = pd.Series(microgrid_device['ut'].buy_price).loc[T]
     df['购电功率'] = pd.Series([value(model.utility_power[t]) for t in T],index=T)
@@ -402,7 +403,7 @@ def extendedResult(result):
     ax2 = ax1.twinx()
     ax2.plot(result.index.values.tolist(),sheet1['电价'])
     ax2.set_ylabel('电价(元)')
-    ax2.set_ylim([-0.25,1.2])
+    #ax2.set_ylim([-0.25,1.2])
     fig.show()
     '''----------------华丽的分割线--------------------'''
     sheet2 = pd.DataFrame()
@@ -455,10 +456,10 @@ def extendedResult(result):
     sheet5['热负荷'] = sheet5['蒸汽驱动负荷']
     sheet5['吸收式制冷机耗热功率'] = -df_sum(result, [col for col in result.columns if '吸收式制冷机制冷功率' in col]) / 0.8
     sheet5['吸收式制冷机制冷功率'] = df_sum(result, [col for col in result.columns if '吸收式制冷机制冷功率' in col])
-    sheet5.to_excel(writer, sheet_name='考虑热品位热平衡')
+    sheet5.to_excel(writer, sheet_name='中品位热平衡')
     plt.figure(3)
     plt.rcParams['font.sans-serif'] = ['SimHei']
-    load, = plt.plot(-sheet5['热负荷'], linewidth=3.0, linestyle='--', label='热负荷')
+    load, = plt.plot(-sheet5['热负荷'], linewidth=3.0, linestyle='--', label='蒸汽热负荷')
     sheet5colors = ['#f4f441', '#42f486', '#f442ee']
     #plt.stackplot(result.index.values.tolist(), sheet5['购热功率'], sheet5['余热锅炉中品位热功率'], sheet5['余热锅炉低品位热功率'],sheet5['蒸汽回收低品位热'],sheet5['吸收式制冷机耗热功率'],
                   #colors=sheet5colors)
@@ -475,14 +476,17 @@ def extendedResult(result):
     sheet6['蒸汽回收低品位热'] = H2M * result['蒸汽负荷']
     sheet6['余热锅炉低品位热功率'] = df_sum(result, [col for col in result.columns if '余热锅炉低品位热功率' in col])
     sheet6['吸收式制冷机耗热功率'] = -df_sum(result, [col for col in result.columns if '吸收式制冷机制冷功率' in col])/0.8
+    sheet6['热水负荷'] = -result['热水负荷']
     sheet6['电价'] = result['电价']
-    sheet6.to_excel(writer, sheet_name='吸收式制冷机耗热情况')
+    sheet6.to_excel(writer, sheet_name='低品位热平衡')
     plt.figure(4)
     plt.rcParams['font.sans-serif'] = ['SimHei']
     load, = plt.plot(-sheet6['吸收式制冷机耗热功率'], linewidth=3.0, linestyle='--', label='吸收式制冷机耗热功率')
-    sheet6colors = ['#f4f441']
+    load, = plt.plot(-sheet6['热水负荷'], linewidth=3.0, linestyle='-', label='热水负荷')
+    sheet6colors = ['#f4f441', '#42f486']
     plt.bar(result.index.values.tolist(), sheet6['蒸汽回收低品位热'], color='#f4f441')
-    first_legend = plt.legend([load], ('ABSC耗热功率',))
+    plt.bar(result.index.values.tolist(), sheet5['余热锅炉低品位热功率'], bottom=sheet6['蒸汽回收低品位热'], color='#42f486')
+    first_legend = plt.legend([load], ('吸收式制冷机耗热功率',))
     ax = plt.gca().add_artist(first_legend)
     plt.legend([mpatches.Patch(color=c) for c in sheet6colors], ['蒸汽回收低品位热'])
     plt.xlabel('时间')

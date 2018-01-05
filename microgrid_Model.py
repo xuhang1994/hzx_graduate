@@ -11,7 +11,7 @@ class DRHeatLoad:
         self.lower_bound = 1000
 
 class electricStorage:
-    def __init__(self, om = 0.005, Cbw = 0.00075 , capacity = 13000, SOCmin = 0.1, SOCmax = 0.9, SOCint = 0.1, Pmax_in = 1250, Pmax_out = 1250, efficiency = 0.95, selfRelease = 0.0025):
+    def __init__(self, om = 0.005, Cbw = 0.00075 , capacity = 13000, SOCmin = 0.1, SOCmax = 0.9, SOCint = 0.1, Pmax_in = 1500, Pmax_out = 1500, efficiency = 0.95, selfRelease = 0.0025):
         self.om = om
         self.Cbw = Cbw
         self.capacity = capacity
@@ -22,7 +22,7 @@ class electricStorage:
         self.Pmax_out = Pmax_out
         self.efficiency = efficiency
         self.selfRelease = selfRelease
-        self.maxDetP = self.Pmax_out * 0.5
+        self.maxDetP = self.Pmax_out * 1
         self.power_into = {}
         self.power_outof = {}
         self.energy = {}

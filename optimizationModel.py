@@ -383,6 +383,7 @@ def extendedResult(result):
     sheet1.to_excel(writer,sheet_name='电平衡优化调度结果')
     fig, ax1 = plt.subplots()
     plt.rcParams['font.sans-serif'] = ['SimHei']
+    plt.rcParams['axes.unicode_minus'] = False
     load, = ax1.plot(-sheet1['电负荷'],linewidth=3.0, linestyle='--', label='电负荷')
     sheet1colors = ['#f4f441','#42f486','#f412ee','#ff8000','#41b8f4','#408080','#7f41f4']
     ax1.bar(result.index.values.tolist(),sheet1['购电功率'],color = '#f4f441')
@@ -401,6 +402,7 @@ def extendedResult(result):
     ax2 = ax1.twinx()
     ax2.plot(result.index.values.tolist(),sheet1['电价'])
     ax2.set_ylabel('电价(元)')
+    ax2.set_ylim([-0.25,1.2])
     fig.show()
     '''----------------华丽的分割线--------------------'''
     sheet2 = pd.DataFrame()

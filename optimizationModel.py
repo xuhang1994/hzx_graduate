@@ -43,6 +43,9 @@ def DayAheadModel(microgrid_data,case):
     optimalDispatch.buy_heat = Var(T,bounds = (0,microgrid_device['ut'].PCC['maxH']))
     optimalDispatch.medium_heat = Var(T,bounds=(-10000,10000))
     optimalDispatch.low_heat = Var(T,bounds=(-10000,10000))
+    #heat variables 1 为了不考虑梯级利用而设定的
+    optimalDispatch.heat_from_outside = Var(T, bounds=(-10000,10000))
+    optimalDispatch.heat_system_need = Var(T, bounds=(-10000,10000))
     # boiler
     optimalDispatch.bol_power = Var(N_bol, T)
     optimalDispatch.bol_state = Var(N_bol, T, within=Binary)
@@ -156,7 +159,11 @@ def DayAheadModel(microgrid_data,case):
     #optimalDispatch.HPB4 = Constraint(T, rule=lambda mdl, t: mdl.medium_heat[t] + mdl.medium_heat[t] >= steam_heat_load[t] )
     optimalDispatch.HPB5 = Constraint(T, rule=lambda mdl, t: mdl.low_heat[t] == (H2M) * steam_heat_load[t] + sum(mdl.gt_power[n_gt, t] * microgrid_device[n_gt].HER * microgrid_device[n_gt].low_heat_recycle for n_gt in N_gt))
     optimalDispatch.HPB6 = Constraint(T, rule=lambda mdl, t: mdl.low_heat[t] + mdl.medium_heat[t] >= steam_heat_load[t] + sum(mdl.absc_heat_in[n_absc, t] for n_absc in N_absc) + water_heat_load[t])
-
+    ##HPB1,2,5,6为考虑能量梯级利用的热约束，HPB7,8,9是不考虑能量梯级利用的热约束，需要用哪个的时候，则把另一个注释掉
+    #optimalDispatch.HPB7 = Constraint(T, rule = lambda mdl, t:mdl.heat_from_outside[t] == mdl.buy_heat[t] + sum(
+        #mdl.bol_power[n_bol, t] for n_bol in N_bol) + sum(mdl.gt_power[n_gt, t] * microgrid_device[n_gt].HER * microgrid_device[n_gt].heat_recycle for n_gt in N_gt))
+    #optimalDispatch.HPB8 = Constraint(T, rule = lambda mdl,t:mdl.heat_system_need[t] == water_heat_load[t] + steam_heat_load[t] + sum(mdl.absc_heat_in[n_absc, t] for n_absc in N_absc))
+    #optimalDispatch.HPB9 = Constraint(T,rule=lambda mdl,t:mdl.heat_from_outside[t] == mdl.heat_system_need[t])
     # TODO 完善高中低品味热模型
     '''冷功率平衡约束'''
 
